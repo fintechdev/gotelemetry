@@ -13,7 +13,7 @@ func TestWidgets(t *testing.T) {
 
 	Convey("Widgets", t, func() {
 
-		widget := Widget{"log", board_id, 1, 1, 10, 10, 0, "default"}
+		widget := Widget{Variant: "log", Board_id: board_id, Column: 1, Row: 1, Width: 10, Height: 10, In_board_index: 0, Background: "default"}
 		credentials, _ := NewCredentials(api_key)
 
 		Convey("Should return status 201 when a Widget is created", func() {
