@@ -43,7 +43,7 @@ func (b Batch) DeleteFlow(tag string) {
 
 // Publish() submits a batch to the Telemetry API servers, and returns either an instance
 // of gotelemetry.Error if a REST error occurs, or errors.Error if any other error occurs.
-func (b Batch) Publish(credentials Credentials, submissionType BatchType) error {
+func (b Batch) Publish(credentials Credentials, channelTag string, submissionType BatchType) error {
 	data := map[string]interface{}{}
 
 	for key, submission := range b {
@@ -73,10 +73,16 @@ func (b Batch) Publish(credentials Credentials, submissionType BatchType) error 
 		}
 	}
 
+	endpoint := "/metrics"
+
+	if channelTag != "" {
+		endpoint = "/channels/" + channelTag + "/metrics"
+	}
+
 	r, err := buildRequestWithHeaders(
 		method,
 		credentials,
-		"/metrics",
+		endpoint,
 		headers,
 		map[string]interface{}{
 			"data": data,

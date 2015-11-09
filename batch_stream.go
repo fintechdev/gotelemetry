@@ -14,12 +14,13 @@ type BatchStream struct {
 	C              chan batchStreamSubmission
 	errorChannel   chan error
 	credentials    Credentials
+	channelTag     string
 	control        chan bool
 	updates        map[string]batchStreamSubmission
 	updateInterval time.Duration
 }
 
-func NewBatchStream(credentials Credentials, submissionInterval time.Duration, errorChannel chan error) (*BatchStream, error) {
+func NewBatchStream(credentials Credentials, channelTag string, submissionInterval time.Duration, errorChannel chan error) (*BatchStream, error) {
 	if submissionInterval < time.Second {
 		return nil, NewError(500, "Invalid submission interval (must be >= 1s)")
 	}
@@ -28,6 +29,7 @@ func NewBatchStream(credentials Credentials, submissionInterval time.Duration, e
 		C:              make(chan batchStreamSubmission, 10),
 		errorChannel:   errorChannel,
 		credentials:    credentials,
+		channelTag:     channelTag,
 		control:        make(chan bool, 0),
 		updates:        map[string]batchStreamSubmission{},
 		updateInterval: submissionInterval,
@@ -104,7 +106,7 @@ func (b *BatchStream) sendUpdates() {
 	}
 
 	for submissionType, batch := range batches {
-		err := batch.Publish(b.credentials, submissionType)
+		err := batch.Publish(b.credentials, b.channelTag, submissionType)
 
 		if err != nil && b.errorChannel != nil {
 			b.errorChannel <- err
