@@ -9,13 +9,16 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"time"
 )
 
+// TelemetryRequest struct
 type TelemetryRequest struct {
 	*http.Request
 	credentials Credentials
 }
 
+// UserAgentString variable
 var UserAgentString = "Gotelemetry"
 
 func buildRequestWithHeaders(method string, credentials Credentials, fragment string, headers map[string]string, body interface{}, parameters ...map[string]string) (*TelemetryRequest, error) {
@@ -104,10 +107,17 @@ func readJSONResponseBody(r *http.Response, target interface{}, debugChannel cha
 	return nil
 }
 
-func sendRawRequest(request *TelemetryRequest) (*http.Response, error) {
-	r, err := http.DefaultClient.Do(request.Request)
+var client *http.Client = &http.Client{
+	Transport: &http.Transport{
+		MaxIdleConns:        5,
+		IdleConnTimeout:     120 * time.Second,
+		TLSHandshakeTimeout: 15 * time.Second,
+	},
+	Timeout: 30 * time.Second,
+}
 
-	return r, err
+func sendRawRequest(request *TelemetryRequest) (*http.Response, error) {
+	return client.Do(request.Request)
 }
 
 func sendJSONRequestInterface(request *TelemetryRequest, target interface{}) error {
