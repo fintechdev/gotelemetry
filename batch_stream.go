@@ -10,6 +10,7 @@ type batchStreamSubmission struct {
 	data           interface{}
 }
 
+// BatchStream struct
 type BatchStream struct {
 	C              chan batchStreamSubmission
 	errorChannel   chan error
@@ -20,6 +21,7 @@ type BatchStream struct {
 	updateInterval time.Duration
 }
 
+// NewBatchStream function
 func NewBatchStream(credentials Credentials, channelTag string, submissionInterval time.Duration, errorChannel chan error) (*BatchStream, error) {
 	if submissionInterval < time.Second {
 		return nil, NewError(500, "Invalid submission interval (must be >= 1s)")
@@ -40,6 +42,7 @@ func NewBatchStream(credentials Credentials, channelTag string, submissionInterv
 	return result, nil
 }
 
+// Send function
 func (b *BatchStream) Send(f *Flow) {
 	b.C <- batchStreamSubmission{
 		submissionType: BatchTypePOST,
@@ -48,6 +51,7 @@ func (b *BatchStream) Send(f *Flow) {
 	}
 }
 
+// SendData function
 func (b *BatchStream) SendData(tag string, data interface{}, submissionType BatchType) {
 	b.C <- batchStreamSubmission{
 		submissionType: submissionType,
@@ -56,10 +60,12 @@ func (b *BatchStream) SendData(tag string, data interface{}, submissionType Batc
 	}
 }
 
+// Stop function
 func (b *BatchStream) Stop() {
 	b.control <- true
 }
 
+// Flush function
 func (b *BatchStream) Flush() {
 	b.sendUpdates()
 	b.Stop()
@@ -77,8 +83,6 @@ func (b *BatchStream) handle() {
 		case <-b.control:
 
 			b.sendUpdates()
-			return
-
 			return
 
 		case <-t:

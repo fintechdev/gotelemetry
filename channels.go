@@ -4,6 +4,7 @@ import (
 	"net/http"
 )
 
+// Notification struct
 type Notification struct {
 	Title    string `json:"title,omitempty"`
 	Message  string `json:"message,omitempty"`
@@ -13,24 +14,28 @@ type Notification struct {
 	FlowTag  string `json:"flow_tag,omitempty"`
 }
 
-func NewNotification(title, message, icon string, duration int, soundUrl string) Notification {
+// NewNotification function
+func NewNotification(title, message, icon string, duration int, soundURL string) Notification {
 	return Notification{
 		Title:    title,
 		Message:  message,
 		Icon:     icon,
 		Duration: duration,
-		SoundURL: soundUrl,
+		SoundURL: soundURL,
 	}
 }
 
+// Channel struct
 type Channel struct {
 	Tag string
 }
 
+// NewChannel function
 func NewChannel(tag string) *Channel {
 	return &Channel{Tag: tag}
 }
 
+// SendNotification function
 func (c *Channel) SendNotification(credentials Credentials, notification Notification) error {
 	if credentials.DebugChannel != nil {
 		credentials.DebugChannel <- NewDebugError("Sending notification %#v to channel %s", notification, c.Tag)
@@ -52,6 +57,7 @@ func (c *Channel) SendNotification(credentials Credentials, notification Notific
 	return err
 }
 
+// SendFlowChannelNotification function
 func SendFlowChannelNotification(credentials Credentials, flowTag string, notification Notification) error {
 	if len(flowTag) == 0 {
 		return NewError(http.StatusBadRequest, "flowTag is required")
