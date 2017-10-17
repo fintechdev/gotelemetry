@@ -102,12 +102,14 @@ func (b Batch) Publish(credentials Credentials, channelTag string, submissionTyp
 
 	err = sendJSONRequestInterface(r, &response)
 
-	for _, errString := range response.Errors {
-		credentials.DebugChannel <- NewError(400, "API Error: "+errString)
-	}
+	if credentials.DebugChannel != nil {
+		for _, errString := range response.Errors {
+			credentials.DebugChannel <- NewError(400, "API Error: "+errString)
+		}
 
-	for _, skipped := range response.Skipped {
-		credentials.DebugChannel <- NewError(400, "API Error: The flow `"+skipped+"` was not updated.")
+		for _, skipped := range response.Skipped {
+			credentials.DebugChannel <- NewError(400, "API Error: The flow `"+skipped+"` was not updated.")
+		}
 	}
 
 	return err
