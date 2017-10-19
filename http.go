@@ -60,6 +60,7 @@ func buildRequestWithHeaders(method string, credentials Credentials, fragment st
 			logger.Trace(
 				"Request payload",
 				"payload", string(b),
+				"payload_size", len(b),
 			)
 		}
 	}
@@ -139,7 +140,11 @@ func sendJSONRequestInterface(request *TelemetryRequest, target interface{}) err
 		return err
 	}
 
-	if logger.IsDebug() {
+	if r.Body != nil {
+		defer r.Body.Close()
+	}
+
+	if logger.IsDebug() && r.StatusCode < 400 {
 		logger.Debug(
 			"Response status",
 			"status_code", r.StatusCode,
@@ -155,11 +160,23 @@ func sendJSONRequestInterface(request *TelemetryRequest, target interface{}) err
 		}
 	}
 
-	if r.Body != nil {
-		defer r.Body.Close()
-	}
-
 	if r.StatusCode > 399 {
+		if logger.IsWarn() {
+			logger.Warn(
+				"Response status",
+				"status_code", r.StatusCode,
+				"status", r.Status,
+			)
+
+			for k, v := range r.Header {
+				logger.Warn(
+					"Response header",
+					"header_name", k,
+					"header_values", v,
+				)
+			}
+		}
+
 		v, _ := ioutil.ReadAll(r.Body)
 
 		if len(v) > 0 && logger.IsTrace() {

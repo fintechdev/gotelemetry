@@ -51,9 +51,9 @@ func (b Batch) Publish(credentials Credentials, channelTag string, submissionTyp
 	data := map[string]interface{}{}
 
 	for key, submission := range b {
-		if logger.IsDebug() {
+		if logger.IsTrace() {
 			payload, _ := json.Marshal(submission)
-			logger.Debug(
+			logger.Trace(
 				"About to post flow with data",
 				"flow", key,
 				"data", string(payload),
