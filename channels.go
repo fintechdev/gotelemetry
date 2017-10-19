@@ -1,6 +1,7 @@
 package gotelemetry
 
 import (
+	"fmt"
 	"net/http"
 )
 
@@ -37,8 +38,12 @@ func NewChannel(tag string) *Channel {
 
 // SendNotification function
 func (c *Channel) SendNotification(credentials Credentials, notification Notification) error {
-	if credentials.DebugChannel != nil {
-		credentials.DebugChannel <- NewDebugError("Sending notification %#v to channel %s", notification, c.Tag)
+	if logger.IsInfo() {
+		logger.Info(
+			"Sending notification to channel",
+			"notification", fmt.Sprintf("%#v", notification),
+			"channel", c.Tag,
+		)
 	}
 
 	req, err := buildRequest(
@@ -63,8 +68,12 @@ func SendFlowChannelNotification(credentials Credentials, flowTag string, notifi
 		return NewError(http.StatusBadRequest, "flowTag is required")
 	}
 
-	if credentials.DebugChannel != nil {
-		credentials.DebugChannel <- NewDebugError("Sending notification %#v to channels of the flow %s", notification, flowTag)
+	if logger.IsInfo() {
+		logger.Info(
+			"Sending notification to channels of the flow",
+			"notification", fmt.Sprintf("%#v", notification),
+			"flow", flowTag,
+		)
 	}
 
 	req, err := buildRequest(

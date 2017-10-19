@@ -3,12 +3,12 @@ package gotelemetry
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -22,8 +22,6 @@ type TelemetryRequest struct {
 var UserAgentString = "Gotelemetry"
 
 func buildRequestWithHeaders(method string, credentials Credentials, fragment string, headers map[string]string, body interface{}, parameters ...map[string]string) (*TelemetryRequest, error) {
-	debugChannel := credentials.DebugChannel
-
 	URL := *credentials.ServerURL
 
 	URL.Path = path.Join(URL.Path, fragment)
@@ -38,8 +36,12 @@ func buildRequestWithHeaders(method string, credentials Credentials, fragment st
 		URL.RawQuery = p.Encode()
 	}
 
-	if debugChannel != nil {
-		debugChannel <- NewDebugError(fmt.Sprintf("Building request %s %s", method, URL.String()))
+	if logger.IsDebug() {
+		logger.Debug(
+			"Building request",
+			"method", method,
+			"url", URL.String(),
+		)
 	}
 
 	var b []byte
@@ -54,8 +56,11 @@ func buildRequestWithHeaders(method string, credentials Credentials, fragment st
 			return nil, err
 		}
 
-		if debugChannel != nil {
-			debugChannel <- NewDebugError(fmt.Sprintf("Request payload: %s", string(b)))
+		if logger.IsTrace() {
+			logger.Trace(
+				"Request payload",
+				"payload", string(b),
+			)
 		}
 	}
 
@@ -73,8 +78,11 @@ func buildRequestWithHeaders(method string, credentials Credentials, fragment st
 		r.Header.Set(key, value)
 	}
 
-	if debugChannel != nil {
-		debugChannel <- NewDebugError(fmt.Sprintf("API Key: %s", credentials.APIKey))
+	if logger.IsTrace() {
+		logger.Trace(
+			"API Key",
+			"key", strings.Repeat("*", len(credentials.APIKey)),
+		)
 	}
 
 	return &TelemetryRequest{r, credentials}, nil
@@ -84,15 +92,18 @@ func buildRequest(method string, credentials Credentials, fragment string, body 
 	return buildRequestWithHeaders(method, credentials, fragment, map[string]string{}, body, parameters...)
 }
 
-func readJSONResponseBody(r *http.Response, target interface{}, debugChannel chan error) error {
+func readJSONResponseBody(r *http.Response, target interface{}) error {
 	source, err := ioutil.ReadAll(r.Body)
 
 	if err != nil && err != io.EOF {
 		return err
 	}
 
-	if debugChannel != nil {
-		debugChannel <- NewDebugError(fmt.Sprintf("Response payload: %s", string(source)))
+	if logger.IsTrace() {
+		logger.Trace(
+			"Response payload",
+			"payload", string(source),
+		)
 	}
 
 	if len(source) == 0 {
@@ -109,9 +120,10 @@ func readJSONResponseBody(r *http.Response, target interface{}, debugChannel cha
 
 var client *http.Client = &http.Client{
 	Transport: &http.Transport{
-		MaxIdleConns:        5,
-		IdleConnTimeout:     120 * time.Second,
-		TLSHandshakeTimeout: 15 * time.Second,
+		IdleConnTimeout:       120 * time.Second,
+		TLSHandshakeTimeout:   15 * time.Second,
+		ResponseHeaderTimeout: 15 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
 	},
 	Timeout: 30 * time.Second,
 }
@@ -121,19 +133,25 @@ func sendRawRequest(request *TelemetryRequest) (*http.Response, error) {
 }
 
 func sendJSONRequestInterface(request *TelemetryRequest, target interface{}) error {
-	debugChannel := request.credentials.DebugChannel
-
 	r, err := sendRawRequest(request)
 
 	if err != nil {
 		return err
 	}
 
-	if debugChannel != nil {
-		debugChannel <- NewDebugError(fmt.Sprintf("Response status code: %d", r.StatusCode))
+	if logger.IsDebug() {
+		logger.Debug(
+			"Response status",
+			"status_code", r.StatusCode,
+			"status", r.Status,
+		)
 
-		for key, value := range r.Header {
-			debugChannel <- NewDebugError(fmt.Sprintf("Response header %s: %s", key, value))
+		for k, v := range r.Header {
+			logger.Debug(
+				"Response header",
+				"header_name", k,
+				"header_values", v,
+			)
 		}
 	}
 
@@ -144,14 +162,17 @@ func sendJSONRequestInterface(request *TelemetryRequest, target interface{}) err
 	if r.StatusCode > 399 {
 		v, _ := ioutil.ReadAll(r.Body)
 
-		if len(v) > 0 && debugChannel != nil {
-			debugChannel <- NewDebugError(fmt.Sprintf("Response payload: %s", string(v)))
+		if len(v) > 0 && logger.IsTrace() {
+			logger.Trace(
+				"Response payload",
+				"payload", string(v),
+			)
 		}
 
 		return NewErrorWithData(r.StatusCode, r.Status, v)
 	}
 
-	return readJSONResponseBody(r, target, request.credentials.DebugChannel)
+	return readJSONResponseBody(r, target)
 }
 
 func sendJSONRequest(request *TelemetryRequest) (interface{}, error) {

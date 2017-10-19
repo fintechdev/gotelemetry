@@ -274,7 +274,7 @@ func (f *Flow) Read(credentials Credentials) error {
 		needsConversion = true
 	}
 
-	err = readJSONResponseBody(res, f.Data, f.credentials.DebugChannel)
+	err = readJSONResponseBody(res, f.Data)
 
 	if err != nil {
 		return err

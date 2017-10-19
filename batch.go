@@ -2,7 +2,6 @@ package gotelemetry
 
 import (
 	"encoding/json"
-	"fmt"
 )
 
 // BatchResponse struct
@@ -52,15 +51,12 @@ func (b Batch) Publish(credentials Credentials, channelTag string, submissionTyp
 	data := map[string]interface{}{}
 
 	for key, submission := range b {
-		if credentials.DebugChannel != nil {
+		if logger.IsDebug() {
 			payload, _ := json.Marshal(submission)
-
-			credentials.DebugChannel <- NewDebugError(
-				fmt.Sprintf(
-					"About to post flow %s with data %s",
-					key,
-					string(payload),
-				),
+			logger.Debug(
+				"About to post flow with data",
+				"flow", key,
+				"data", string(payload),
 			)
 		}
 
@@ -102,13 +98,18 @@ func (b Batch) Publish(credentials Credentials, channelTag string, submissionTyp
 
 	err = sendJSONRequestInterface(r, &response)
 
-	if credentials.DebugChannel != nil {
+	if logger.IsWarn() {
 		for _, errString := range response.Errors {
-			credentials.DebugChannel <- NewError(400, "API Error: "+errString)
+			logger.Warn(
+				"API Error (Errors)",
+				"error", errString,
+			)
 		}
-
-		for _, skipped := range response.Skipped {
-			credentials.DebugChannel <- NewError(400, "API Error: The flow `"+skipped+"` was not updated.")
+		for _, skippedFlow := range response.Skipped {
+			logger.Warn(
+				"API Error (Skipped): The flow was not updated",
+				"flow", skippedFlow,
+			)
 		}
 	}
 
