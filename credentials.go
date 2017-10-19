@@ -15,7 +15,7 @@ type Credentials struct {
 
 // NewCredentials function
 func NewCredentials(apiKey string, serverURL ...string) (Credentials, error) {
-	server := "https://api.telemetryapp.com"
+	server := "https://api.telemetrytv.com"
 
 	if len(serverURL) > 0 {
 		server = serverURL[0]
