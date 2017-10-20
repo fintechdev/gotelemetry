@@ -44,12 +44,13 @@ func buildRequestWithHeaders(method string, credentials Credentials, fragment st
 		)
 	}
 
-	var b []byte
 	var err error
+	var r *http.Request
 
 	if body == nil {
-		b = []byte{}
+		r, err = http.NewRequest(method, URL.String(), nil)
 	} else {
+		var b []byte
 		b, err = json.Marshal(body)
 
 		if err != nil {
@@ -63,9 +64,9 @@ func buildRequestWithHeaders(method string, credentials Credentials, fragment st
 				"payload_size", len(b),
 			)
 		}
-	}
 
-	r, err := http.NewRequest(method, URL.String(), bytes.NewReader(b))
+		r, err = http.NewRequest(method, URL.String(), bytes.NewReader(b))
+	}
 
 	if err != nil {
 		return nil, err
@@ -76,6 +77,13 @@ func buildRequestWithHeaders(method string, credentials Credentials, fragment st
 	r.SetBasicAuth(credentials.APIKey, "")
 
 	for key, value := range headers {
+		if logger.IsTrace() {
+			logger.Trace(
+				"Request header",
+				"header_name", key,
+				"header_value", value,
+			)
+		}
 		r.Header.Set(key, value)
 	}
 
@@ -94,6 +102,18 @@ func buildRequest(method string, credentials Credentials, fragment string, body 
 }
 
 func readJSONResponseBody(r *http.Response, target interface{}) error {
+	defer func() {
+		closeErr := r.Body.Close()
+		if closeErr != nil {
+			if logger.IsWarn() {
+				logger.Warn(
+					"failed to close response body reader",
+					"error", closeErr.Error(),
+				)
+			}
+		}
+	}()
+
 	source, err := ioutil.ReadAll(r.Body)
 
 	if err != nil && err != io.EOF {
@@ -135,13 +155,8 @@ func sendRawRequest(request *TelemetryRequest) (*http.Response, error) {
 
 func sendJSONRequestInterface(request *TelemetryRequest, target interface{}) error {
 	r, err := sendRawRequest(request)
-
 	if err != nil {
 		return err
-	}
-
-	if r.Body != nil {
-		defer r.Body.Close()
 	}
 
 	if logger.IsDebug() && r.StatusCode < 400 {
@@ -161,6 +176,18 @@ func sendJSONRequestInterface(request *TelemetryRequest, target interface{}) err
 	}
 
 	if r.StatusCode > 399 {
+		defer func() {
+			closeErr := r.Body.Close()
+			if closeErr != nil {
+				if logger.IsWarn() {
+					logger.Warn(
+						"failed to close response body reader",
+						"error", closeErr.Error(),
+					)
+				}
+			}
+		}()
+
 		if logger.IsWarn() {
 			logger.Warn(
 				"Response status",
@@ -177,7 +204,11 @@ func sendJSONRequestInterface(request *TelemetryRequest, target interface{}) err
 			}
 		}
 
-		v, _ := ioutil.ReadAll(r.Body)
+		var v []byte
+		v, err = ioutil.ReadAll(r.Body)
+		if err != nil {
+			return err
+		}
 
 		if len(v) > 0 && logger.IsTrace() {
 			logger.Trace(
