@@ -145,6 +145,8 @@ var client *http.Client = &http.Client{
 		TLSHandshakeTimeout:   15 * time.Second,
 		ResponseHeaderTimeout: 15 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
+		DisableKeepAlives:     true,
+		DisableCompression:    true,
 	},
 	Timeout: 30 * time.Second,
 }
