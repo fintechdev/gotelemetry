@@ -1,6 +1,7 @@
 package gotelemetry
 
 import (
+	"net/http"
 	"time"
 )
 
@@ -21,9 +22,24 @@ type BatchStream struct {
 }
 
 // NewBatchStream function
-func NewBatchStream(credentials Credentials, channelTag string, submissionInterval time.Duration) (*BatchStream, error) {
+func NewBatchStream(credentials Credentials, channelTag string, submissionInterval time.Duration, disableKeepAlives, disableCompression bool) (*BatchStream, error) {
 	if submissionInterval < time.Second {
 		return nil, NewError(500, "Invalid submission interval (must be >= 1s)")
+	}
+
+	// TODO: the client should belong to BatchStream, however, this is impossible
+	//       in the current implementation, we need to work with one global
+	//       static value.
+	client = &http.Client{
+		Transport: &http.Transport{
+			IdleConnTimeout:       120 * time.Second,
+			TLSHandshakeTimeout:   15 * time.Second,
+			ResponseHeaderTimeout: 15 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+			DisableKeepAlives:     disableKeepAlives,
+			DisableCompression:    disableCompression,
+		},
+		Timeout: 30 * time.Second,
 	}
 
 	result := &BatchStream{

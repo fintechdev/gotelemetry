@@ -139,19 +139,20 @@ func readJSONResponseBody(r *http.Response, target interface{}) error {
 	return nil
 }
 
-var client *http.Client = &http.Client{
-	Transport: &http.Transport{
-		IdleConnTimeout:       120 * time.Second,
-		TLSHandshakeTimeout:   15 * time.Second,
-		ResponseHeaderTimeout: 15 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-		DisableKeepAlives:     true,
-		DisableCompression:    true,
-	},
-	Timeout: 30 * time.Second,
-}
+var client *http.Client
 
 func sendRawRequest(request *TelemetryRequest) (*http.Response, error) {
+	if client == nil {
+		client = &http.Client{
+			Transport: &http.Transport{
+				IdleConnTimeout:       120 * time.Second,
+				TLSHandshakeTimeout:   15 * time.Second,
+				ResponseHeaderTimeout: 15 * time.Second,
+				ExpectContinueTimeout: 1 * time.Second,
+			},
+			Timeout: 30 * time.Second,
+		}
+	}
 	return client.Do(request.Request)
 }
 
